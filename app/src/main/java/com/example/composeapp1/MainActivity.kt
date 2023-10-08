@@ -12,9 +12,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.AddCircle
+import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -86,8 +88,8 @@ class MainActivity : ComponentActivity() {
         val items = listOf(
             BottomNavigationItem(
                 title = "Camera",
-                selectedIcon = Icons.Filled.AddCircle,
-                unselectedIcon = Icons.Outlined.AddCircle,
+                selectedIcon = Icons.Filled.CameraAlt,
+                unselectedIcon = Icons.Outlined.CameraAlt,
             ),
             BottomNavigationItem(
                 title = "Home",

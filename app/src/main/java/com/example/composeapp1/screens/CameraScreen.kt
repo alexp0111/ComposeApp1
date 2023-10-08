@@ -1,7 +1,13 @@
 package com.example.composeapp1.screens
 
+import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Matrix
+import android.util.Log
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageCaptureException
+import androidx.camera.core.ImageProxy
 import androidx.camera.view.LifecycleCameraController
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.Arrangement
@@ -9,13 +15,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cameraswitch
 import androidx.compose.material.icons.filled.PhotoCamera
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
@@ -24,14 +27,29 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.composeapp1.MyApplication
+import com.example.composeapp1.data.MyPhoto
 import com.example.composeapp1.viewmodels.MainViewModel
+import com.example.composeapp1.viewmodels.SharedViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import java.io.File
+import java.io.ObjectOutputStream
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 
 
 @Composable
 fun CameraScreen(
     mainViewModel: MainViewModel = viewModel(),
+    sharedViewModel: SharedViewModel = viewModel(),
+    state: List<Bitmap>,
+    onPhotoTaken: (Bitmap) -> Unit
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
     val controller = mainViewModel.camController.value
@@ -67,9 +85,8 @@ fun CameraScreen(
                     controller?.let {
                         takePhoto(
                             controller = it,
-                            onPhotoTaken = {
-
-                            }
+                            onPhotoTaken = onPhotoTaken,
+                            mainViewModel.getApplication<MyApplication>().applicationContext
                         )
                     }
                 }
@@ -100,36 +117,70 @@ fun CameraPreview(
     )
 }
 
+
 private fun takePhoto(
     controller: LifecycleCameraController,
-    onPhotoTaken: (Bitmap) -> Unit
+    onPhotoTaken: (Bitmap) -> Unit,
+    context: Context
 ) {
-    // controller.takePicture(
-    //     ContextCompat.getMainExecutor(applicationContext),
-    //     object : OnImageCapturedCallback() {
-    //         override fun onCaptureSuccess(image: ImageProxy) {
-    //             super.onCaptureSuccess(image)
-//
-    //             val matrix = Matrix().apply {
-    //                 postRotate(image.imageInfo.rotationDegrees.toFloat())
-    //             }
-    //             val rotatedBitmap = Bitmap.createBitmap(
-    //                 image.toBitmap(),
-    //                 0,
-    //                 0,
-    //                 image.width,
-    //                 image.height,
-    //                 matrix,
-    //                 true
-    //             )
-//
-    //             onPhotoTaken(rotatedBitmap)
-    //         }
-//
-    //         override fun onError(exception: ImageCaptureException) {
-    //             super.onError(exception)
-    //             Log.e("Camera", "Couldn't take photo: ", exception)
-    //         }
-    //     }
-    // )
+    controller.takePicture(
+        ContextCompat.getMainExecutor(context),
+        object : ImageCapture.OnImageCapturedCallback() {
+            override fun onCaptureSuccess(image: ImageProxy) {
+                super.onCaptureSuccess(image)
+                Log.d("SUCK", "SES")
+                val matrix = Matrix().apply {
+                    postRotate(image.imageInfo.rotationDegrees.toFloat())
+                }
+                val rotatedBitmap = Bitmap.createBitmap(
+                    image.toBitmap(),
+                    0,
+                    0,
+                    image.width,
+                    image.height,
+                    matrix,
+                    true
+                )
+                onPhotoTaken(rotatedBitmap)
+                CoroutineScope(Dispatchers.IO).launch {
+                    loadIntoMemo(rotatedBitmap, context)
+                }
+            }
+
+            override fun onError(exception: ImageCaptureException) {
+                super.onError(exception)
+                Log.e("Camera", "Couldn't take photo: ", exception)
+            }
+        }
+    )
+}
+
+private fun loadIntoMemo(bitmap: Bitmap, context: Context) {
+    val time = LocalTime.now()
+    val date = LocalDate.now()
+    val photo = MyPhoto(
+        time.format(DateTimeFormatter.ofPattern("HH:mm")),
+        date.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
+    )
+
+    // Dir
+    val rootPath = context.filesDir.path
+    val dir = File(rootPath, "photos/${bitmap.generationId}")
+    if (!dir.exists()) dir.mkdir()
+
+    // Files
+    val dataFile = File("$rootPath/photos/${bitmap.generationId}", "data")
+    val infoFile = File("$rootPath/photos/${bitmap.generationId}", "info")
+    dataFile.createNewFile()
+    infoFile.createNewFile()
+
+    val dtOut = dataFile.outputStream()
+    bitmap.compress(Bitmap.CompressFormat.JPEG, 100, dtOut)
+    dtOut.close()
+
+    val infOut = infoFile.outputStream()
+    val objectOutputStream = ObjectOutputStream(infOut)
+    objectOutputStream.writeObject(photo)
+    objectOutputStream.close()
+    infOut.close()
 }

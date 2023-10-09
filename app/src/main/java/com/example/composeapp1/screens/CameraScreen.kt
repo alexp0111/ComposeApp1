@@ -25,18 +25,24 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.composeapp1.MyApplication
+import com.example.composeapp1.R
 import com.example.composeapp1.data.MyPhoto
+import com.example.composeapp1.utils.DiskLoader
 import com.example.composeapp1.viewmodels.MainViewModel
 import com.example.composeapp1.viewmodels.SharedViewModel
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.newSingleThreadContext
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.ObjectOutputStream
 import java.time.LocalDate
@@ -64,7 +70,7 @@ fun CameraScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
-                .padding(16.dp),
+                .padding(dimensionResource(id = R.dimen.basic_padding)),
             horizontalArrangement = Arrangement.SpaceAround
         ) {
             IconButton(
@@ -143,7 +149,7 @@ private fun takePhoto(
                 )
                 onPhotoTaken(rotatedBitmap)
                 CoroutineScope(Dispatchers.IO).launch {
-                    loadIntoMemo(rotatedBitmap, context)
+                    DiskLoader.loadIntoMemo(rotatedBitmap, context)
                 }
             }
 
@@ -153,34 +159,4 @@ private fun takePhoto(
             }
         }
     )
-}
-
-private fun loadIntoMemo(bitmap: Bitmap, context: Context) {
-    val time = LocalTime.now()
-    val date = LocalDate.now()
-    val photo = MyPhoto(
-        time.format(DateTimeFormatter.ofPattern("HH:mm")),
-        date.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
-    )
-
-    // Dir
-    val rootPath = context.filesDir.path
-    val dir = File(rootPath, "photos/${bitmap.generationId}")
-    if (!dir.exists()) dir.mkdir()
-
-    // Files
-    val dataFile = File("$rootPath/photos/${bitmap.generationId}", "data")
-    val infoFile = File("$rootPath/photos/${bitmap.generationId}", "info")
-    dataFile.createNewFile()
-    infoFile.createNewFile()
-
-    val dtOut = dataFile.outputStream()
-    bitmap.compress(Bitmap.CompressFormat.JPEG, 100, dtOut)
-    dtOut.close()
-
-    val infOut = infoFile.outputStream()
-    val objectOutputStream = ObjectOutputStream(infOut)
-    objectOutputStream.writeObject(photo)
-    objectOutputStream.close()
-    infOut.close()
 }

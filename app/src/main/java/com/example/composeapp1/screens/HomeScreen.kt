@@ -1,9 +1,6 @@
 package com.example.composeapp1.screens
 
-import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -24,17 +21,19 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.composeapp1.MyApplication
+import com.example.composeapp1.R
 import com.example.composeapp1.data.MyPhoto
+import com.example.composeapp1.utils.DiskLoader
 import com.example.composeapp1.viewmodels.MainViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import java.io.File
-import java.io.ObjectInputStream
 
 @Composable
 fun HomeScreen(navController: NavController, state: List<Bitmap>) {
@@ -52,11 +51,16 @@ fun MainContent(
         LazyColumn {
             CoroutineScope(Dispatchers.IO).launch {
                 val newList =
-                 loadFromMemo(mainViewModel.getApplication<MyApplication>().applicationContext)
-
+                    DiskLoader.loadFromMemo(mainViewModel.getApplication<MyApplication>().applicationContext)
                 mainViewModel.updatePhotos(newList)
             }
-            items(cards.value) { item ->
+            items(
+                cards.value.sortedWith(
+                    compareBy(
+                        { it.second.date },
+                        { it.second.time })
+                )
+            ) { item ->
                 ImageRow(item = item)
             }
         }
@@ -67,7 +71,12 @@ fun MainContent(
 fun ImageRow(item: Pair<Bitmap, MyPhoto>) {
     Card(
         modifier = Modifier
-            .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
+            .padding(
+                start = dimensionResource(id = R.dimen.basic_padding),
+                end = dimensionResource(id = R.dimen.basic_padding),
+                top = dimensionResource(id = R.dimen.half_padding),
+                bottom = dimensionResource(id = R.dimen.half_padding)
+            )
             .fillMaxWidth(),
         shape = CardDefaults.shape,
         elevation = CardDefaults.cardElevation()
@@ -80,14 +89,18 @@ fun ImageRow(item: Pair<Bitmap, MyPhoto>) {
             Image(
                 bitmap = item.first.asImageBitmap(),
                 contentDescription = null,
+                contentScale = ContentScale.FillWidth,
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth()
             )
-            Spacer(Modifier.size(1.dp))
+            Spacer(Modifier.size(dimensionResource(id = R.dimen.spacer)))
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .padding(top = 16.dp, bottom = 16.dp),
+                    .padding(
+                        top = dimensionResource(id = R.dimen.basic_padding),
+                        bottom = dimensionResource(id = R.dimen.basic_padding)
+                    ),
                 horizontalArrangement = Arrangement.SpaceAround,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -96,30 +109,4 @@ fun ImageRow(item: Pair<Bitmap, MyPhoto>) {
             }
         }
     }
-}
-
-private suspend fun loadFromMemo(context: Context): List<Pair<Bitmap, MyPhoto>> {
-    val list = mutableListOf<Pair<Bitmap, MyPhoto>>()
-    val rootPath = context.filesDir.path
-    val dir = File(rootPath, "photos")
-    if (!dir.exists()) dir.mkdir()
-    dir.listFiles()?.forEach {
-        val dataFile = File(it.path, "data")
-        val infoFile = File(it.path, "info")
-        //
-
-        val dtIn = dataFile.inputStream()
-        val btmp = BitmapFactory.decodeStream(dtIn)
-        dtIn.close()
-
-        val infIn = infoFile.inputStream()
-        val ois = ObjectInputStream(infIn)
-        val obj = ois.readObject()
-        ois.close()
-        infIn.close()
-
-        list.add(Pair(btmp, obj as MyPhoto))
-    }
-
-    return list
 }

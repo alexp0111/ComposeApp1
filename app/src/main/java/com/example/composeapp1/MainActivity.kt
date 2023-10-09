@@ -43,6 +43,7 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.example.composeapp1.navigation.MyNavigation
 import com.example.composeapp1.ui.theme.ComposeApp1Theme
+import com.example.composeapp1.ui.theme.nunitoFont
 import com.example.composeapp1.viewmodels.MainViewModel
 
 // Screens: Captured photos, Camera preview, Download from link
@@ -123,7 +124,7 @@ class MainActivity : ComponentActivity() {
     @Composable
     fun TopBar(title: String) {
         TopAppBar(
-            title = { Text(text = title, fontSize = 18.sp) },
+            title = { Text(text = title, fontFamily = nunitoFont) },
         )
     }
 

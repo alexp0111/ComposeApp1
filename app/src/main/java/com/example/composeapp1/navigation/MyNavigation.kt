@@ -32,10 +32,11 @@ fun MyNavigation(navController: NavHostController, vm: MainViewModel = viewModel
                 HomeScreen(navController, state)
             }
             composable(route = MyScreens.SearchScreen.route) {
+                vm.setTitle(MyScreens.SearchScreen.title)
                 SearchScreen()
             }
             composable(route = MyScreens.CameraScreen.route) {entry ->
-                vm.setTitle(MyScreens.SearchScreen.title)
+                vm.setTitle(MyScreens.CameraScreen.title)
 
                 val viewModel = entry.sharedViewModel<SharedViewModel>(navController)
                 val state by viewModel.bitmaps.collectAsState()
